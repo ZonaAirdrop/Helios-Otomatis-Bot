@@ -1,1 +1,55 @@
-# Helios-Otomatis-Bot
+
+Berikut ini adalah versi **rapih dan siap untuk diupload ke GitHub (README.md)** dari semua command yang kamu tulis, sudah saya susun agar jelas dan profesional:
+
+---
+
+## 🚀 How to Run `Helios-Otomatis-Bot`
+
+A step-by-step guide to install and run this Python bot.
+
+---
+
+### 🔧 1. Clone the Repository
+
+```bash
+git clone https://github.com/ZonaAirdrop/Helios-Otomatis-Bot.git
+cd Helios-Otomatis-Bot
+```
+### 📦 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+### 🔑 3. Add Your Private Keys
+
+Create or edit a file named `accounts.txt` with your private keys:
+
+```
+your_private_key_1
+your_private_key_2
+```
+
+> ⚠️ Make sure each key is on a new line, and never share this file publicly.
+
+### 🌐 4. (Optional) Configure Proxy
+
+You can use a proxy in any of the following formats:
+
+```
+ip:port
+http://ip:port
+http://user:pass@ip:port
+```
+
+Put them in a file like `proxies.txt` if the bot supports rotating proxies.
+
+---
+
+### ▶️ 5. Run the Bot
+
+```bash
+python bot.py
+```
+
+Make sure you're in the correct working directory and have Python 3 installed.
+

@@ -1,8 +1,4 @@
 
-Berikut ini adalah versi **rapih dan siap untuk diupload ke GitHub (README.md)** dari semua command yang kamu tulis, sudah saya susun agar jelas dan profesional:
-
----
-
 ## 🚀 How to Run `Helios-Otomatis-Bot`
 
 A step-by-step guide to install and run this Python bot.

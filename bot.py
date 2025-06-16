@@ -62,7 +62,7 @@ class Helios:
         {Fore.GREEN + Style.BRIGHT}Helios{Fore.BLUE + Style.BRIGHT} Helios Otomatis Bot
             """
             f"""
-        {Fore.GREEN + Style.BRIGHT} Zonaairdrop {Fore.YELLOW + Style.BRIGHT}<Zonaairdrop>
+        {Fore.GREEN + Style.BRIGHT} group team {Fore.YELLOW + Style.BRIGHT}<Zonaairdrop>
             """
         )
 

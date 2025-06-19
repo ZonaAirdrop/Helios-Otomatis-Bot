@@ -62,10 +62,10 @@ class Helios:
     def welcome(self):
         print(
             f"""
-        {Fore.GREEN + Style.BRIGHT}Helios{Fore.BLUE + Style.BRIGHT} Testnet BOT CDY
+        {Fore.GREEN + Style.BRIGHT}Helios{Fore.BLUE + Style.BRIGHT} Testnet BOT Helios
             """
             f"""
-        {Fore.GREEN + Style.BRIGHT}YetiDAO {Fore.YELLOW + Style.BRIGHT}<Cryptodai3>
+        {Fore.GREEN + Style.BRIGHT} {Fore.YELLOW + Style.BRIGHT}<zonaairdrop>
             """
         )
 

@@ -65,7 +65,7 @@ class Helios:
         {Fore.GREEN + Style.BRIGHT}Helios{Fore.BLUE + Style.BRIGHT} Testnet BOT Helios
             """
             f"""
-        {Fore.GREEN + Style.BRIGHT} {Fore.YELLOW + Style.BRIGHT}<zonaairdrop>
+        {Fore.GREEN + Style.BRIGHT}Team {Fore.YELLOW + Style.BRIGHT}zonaairdrop
             """
         )
 

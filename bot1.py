@@ -68,6 +68,8 @@ class Helios:
         self.DELEGATE_ROUTER_ADDRESS = "0x0000000000000000000000000000000000000800"
         self.REWARDS_ROUTER_ADDRESS = "0x0000000000000000000000000000000000000801"
         self.PROPOSAL_ROUTER_ADDRESS = "0x0000000000000000000000000000000000000805"
+        # ADDED CHRONOS ROUTER ADDRESS
+        self.CHRONOS_ROUTER_ADDRESS = "0x0000000000000000000000000000000000000830"
         self.VALIDATATORS = [
             {"Moniker": "Helios-Peer", "Contract Address": "0x72a9B3509B19D9Dbc2E0Df71c4A6451e8a3DD705"},
             {"Moniker": "Helios-Unity", "Contract Address": "0x7e62c5e7Eba41fC8c25e605749C476C0236e0604"},
@@ -80,6 +82,7 @@ class Helios:
             {"type":"function","name":"allowance","stateMutability":"view","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}]},
             {"type":"function","name":"approve","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"name":"","type":"bool"}]}
         ]''')
+        # ADDED CHRONOS ABI
         self.HELIOS_CONTRACT_ABI = [
             {
                 "name": "claimRewards",
@@ -106,6 +109,26 @@ class Helios:
                 "outputs": [
                     { "internalType": "bool", "name": "success", "type": "bool" }
                 ]
+            },
+            # ADDED CREATE CRON FUNCTION
+            {
+                "type": "function",
+                "name": "createCron",
+                "stateMutability": "nonpayable",
+                "inputs": [
+                    { "internalType": "address", "name": "contractAddress", "type": "address" },
+                    { "internalType": "string", "name": "abi", "type": "string" },
+                    { "internalType": "string", "name": "methodName", "type": "string" },
+                    { "internalType": "string[]", "name": "params", "type": "string[]" },
+                    { "internalType": "uint64", "name": "frequency", "type": "uint64" },
+                    { "internalType": "uint64", "name": "expirationBlock", "type": "uint64" },
+                    { "internalType": "uint64", "name": "gasLimit", "type": "uint64" },
+                    { "internalType": "uint256", "name": "maxGasPrice", "type": "uint256" },
+                    { "internalType": "uint256", "name": "amountToDeposit", "type": "uint256" },
+                ],
+                "outputs": [
+                    { "internalType": "bool", "name": "success", "type": "bool" },
+                ]
             }
         ]
         self.PAGE_URL = "https://testnet.helioschain.network"
@@ -119,6 +142,8 @@ class Helios:
         self.access_tokens = {}
         self.used_nonce = {}
         self.deploy_count = 0
+        # ADDED CRON COUNT
+        self.cron_count = 0
         self.min_delay = 0
         self.max_delay = 0
 
@@ -461,6 +486,51 @@ class Helios:
             logger.error(f"{str(e)}")
             return None, None
         
+    # ADDED PERFORM CREATE CRON FUNCTION
+    async def perform_create_cron(self, account: str, address: str, use_proxy: bool):
+        try:
+            web3 = await self.get_web3_with_check(address, use_proxy)
+
+            token_contract = web3.eth.contract(address=web3.to_checksum_address(self.CHRONOS_ROUTER_ADDRESS), abi=self.HELIOS_CONTRACT_ABI)
+
+            current_block = web3.eth.block_number
+
+            contract_address = web3.to_checksum_address("0xaece8330ae7aeecc6a5e59b9d1ccca02f2dc6c38")
+            abi = "[{\"inputs\":[],\"name\":\"increment\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
+            method_name = "increment"
+            params = []
+            frequency = 300
+            expiration_block = current_block + 10000
+            gas_limit = 110000
+            max_gas_price = 5000000000
+            amount_to_deposit = web3.to_wei(1, "ether")
+
+            cron_data = token_contract.functions.createCron(
+                contract_address, abi, method_name, params, frequency, expiration_block, gas_limit, max_gas_price, amount_to_deposit
+            )
+
+            estimated_gas = cron_data.estimate_gas({"from": address})
+            max_priority_fee = web3.to_wei(2.5, "gwei")
+            max_fee = web3.to_wei(4.5, "gwei")
+
+            cron_tx = cron_data.build_transaction({
+                "from": address,
+                "gas": int(estimated_gas * 1.2),
+                "maxFeePerGas": int(max_fee),
+                "maxPriorityFeePerGas": int(max_priority_fee),
+                "nonce": self.used_nonce[address],
+                "chainId": web3.eth.chain_id
+            })
+
+            tx_hash = await self.send_raw_transaction_with_retries(account, web3, cron_tx)
+            receipt = await self.wait_for_receipt_with_retries(web3, tx_hash)
+            self.used_nonce[address] += 1
+
+            return tx_hash
+        except Exception as e:
+            logger.error(f"{str(e)}")
+            return None
+
     def print_deploy_question(self):
         while True:
             try:
@@ -470,6 +540,19 @@ class Helios:
                     break
                 else:
                     print(f"{Fore.RED + Style.BRIGHT}Deploy Contract Count must be > 0.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
+
+    # ADDED PRINT CRON QUESTION
+    def print_cron_question(self):
+        while True:
+            try:
+                cron_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Deploy Chronos Count For Each Wallet -> {Style.RESET_ALL}").strip())
+                if cron_count > 0:
+                    self.cron_count = cron_count
+                    break
+                else:
+                    print(f"{Fore.RED + Style.BRIGHT}Deploy Chronos Count must be > 0.{Style.RESET_ALL}")
             except ValueError:
                 print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number.{Style.RESET_ALL}")
 
@@ -510,35 +593,41 @@ class Helios:
             await asyncio.sleep(1)
 
     def print_question(self):
+        # UPDATED MENU OPTIONS
         while True:
             try:
                 print(f"{Fore.YELLOW + Style.BRIGHT}Select Option:{Style.RESET_ALL}")
                 print(f"{Fore.GREEN + Style.BRIGHT}1. Claim Delegate Rewards{Style.RESET_ALL}")
                 print(f"{Fore.GREEN + Style.BRIGHT}2. Vote Governance Proposal{Style.RESET_ALL}")
                 print(f"{Fore.GREEN + Style.BRIGHT}3. Deploy Token Contract{Style.RESET_ALL}")
-                print(f"{Fore.GREEN + Style.BRIGHT}4. Run All Features{Style.RESET_ALL}")
-                option = int(input(f"{Fore.WHITE + Style.BRIGHT}Choose [1/2/3/4] -> {Style.RESET_ALL}").strip())
+                print(f"{Fore.GREEN + Style.BRIGHT}4. Deploy Chronos Scheduled{Style.RESET_ALL}")  # ADDED OPTION
+                print(f"{Fore.GREEN + Style.BRIGHT}5. Run All Features{Style.RESET_ALL}")  # UPDATED OPTION
+                option = int(input(f"{Fore.WHITE + Style.BRIGHT}Choose [1/2/3/4/5] -> {Style.RESET_ALL}").strip())
 
-                if option in [1, 2, 3, 4]:
+                if option in [1, 2, 3, 4, 5]:
                     option_type = (
                         "Claim Delegate Rewards" if option == 1 else 
                         "Vote Governance Proposal" if option == 2 else 
                         "Deploy Token Contract" if option == 3 else 
+                        "Deploy Chronos Scheduled" if option == 4 else  # ADDED
                         "Run All Features"
                     )
                     print(f"{Fore.YELLOW + Style.BRIGHT}{option_type} Selected.{Style.RESET_ALL}")
                     break
                 else:
-                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, 3, or 4.{Style.RESET_ALL}")
+                    print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2, 3, 4 or 5.{Style.RESET_ALL}")
             except ValueError:
-                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, 3, or 4).{Style.RESET_ALL}")
+                print(f"{Fore.RED + Style.BRIGHT}Invalid input. Enter a number (1, 2, 3, 4 or 5).{Style.RESET_ALL}")
             
         if option == 3:
             self.print_deploy_question()
             self.print_delay_question()
-            
-        elif option == 4:
+        elif option == 4:  # ADDED
+            self.print_cron_question()
+            self.print_delay_question()
+        elif option == 5:
             self.print_deploy_question()
+            self.print_cron_question()  # ADDED
             self.print_delay_question()
 
         while True:
@@ -687,7 +776,6 @@ class Helios:
         else:
             logger.error(f"Perform On-Chain Failed")
 
-
     async def process_perform_vote_proposal(self, account: str, address: str, proposal_id: int, use_proxy: bool):
         tx_hash = await self.perform_vote_proposal(account, address, proposal_id, use_proxy)
         if tx_hash:
@@ -704,6 +792,17 @@ class Helios:
             explorer = f"https://explorer.helioschainlabs.org/tx/{tx_hash}"
             logger.actionSuccess(f"Success")
             logger.action(f"Contract: {contract_address}")
+            logger.action(f"Tx Hash: {tx_hash}")
+            logger.actionSuccess(f"Explorer: {explorer}")
+        else:
+            logger.error(f"Perform On-Chain Failed")
+
+    # ADDED PROCESS PERFORM CREATE CRON
+    async def process_perform_create_cron(self, account: str, address: str, use_proxy: bool):
+        tx_hash = await self.perform_create_cron(account, address, use_proxy)
+        if tx_hash:
+            explorer = f"https://explorer.helioschainlabs.org/tx/{tx_hash}"
+            logger.actionSuccess(f"Success")
             logger.action(f"Tx Hash: {tx_hash}")
             logger.actionSuccess(f"Explorer: {explorer}")
         else:
@@ -780,6 +879,14 @@ class Helios:
             await self.process_perform_deploy_contract(account, address, token_name, token_symbol, total_supply, use_proxy)
             await self.print_timer()
 
+    # ADDED PROCESS OPTION 4 (CHRONOS)
+    async def process_option_4(self, account: str, address: str, use_proxy: bool):
+        logger.step(f"Deploying Chronos")
+        for i in range(self.cron_count):
+            logger.info(f"{i+1} of {self.cron_count}")
+            await self.process_perform_create_cron(account, address, use_proxy)
+            await self.print_timer()
+
     async def process_accounts(self, account: str, address: str, option: int, use_proxy: bool, rotate_proxy: bool):
         logined = await self.process_user_login(account, address, use_proxy, rotate_proxy)
         if logined:
@@ -794,12 +901,16 @@ class Helios:
                 await self.process_option_2(account, address, use_proxy)
             elif option == 3:
                 await self.process_option_3(account, address, use_proxy)
-            elif option == 4:
+            elif option == 4:  # ADDED CHRONOS
+                await self.process_option_4(account, address, use_proxy)
+            elif option == 5:  # RUN ALL FEATURES
                 await self.process_option_1(account, address, use_proxy)
                 await asyncio.sleep(5)
                 await self.process_option_2(account, address, use_proxy)
                 await asyncio.sleep(5)
                 await self.process_option_3(account, address, use_proxy)
+                await asyncio.sleep(5)
+                await self.process_option_4(account, address, use_proxy)  # ADDED
                 await asyncio.sleep(5)
 
     async def main(self):
